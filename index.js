@@ -36,11 +36,24 @@ async function run() {
 
     const booksCollection = client.db("booksDB").collection("books")
 
+
+
+    // book related api
+
     app.get("/books", async(req, res)=> {
 
         const result = await booksCollection.find().toArray()
         
         res.send(result)
+    })
+
+    app.post("/books" , async(req, res)=> {
+      const book = req.body
+
+      console.log(book)
+      const result = await booksCollection.insertOne(book);
+      res.send(result)
+      
     })
 
     app.get('/books/:id', async(req, res) => {
@@ -51,8 +64,33 @@ async function run() {
       const query = { _id : new ObjectId(id) };
 
       const result = await booksCollection.findOne(query)
-      
+
       res.send(result)
+
+    })
+
+
+    app.put('/booksUpdate', async(req, res)=> {
+      const book = req.body
+
+      console.log(book)
+
+      const filter = { _id: new ObjectId(book.id) };
+
+      const updateDoc = {
+        $set: {
+          imageURL : book.imageURL,
+          bookName : book.bookName,
+          authorName : book.authorName,
+          category : book.category,
+          ratings : book.ratings
+        },
+      };
+
+      const result = await booksCollection.updateOne(filter, updateDoc);
+
+      res.send(result)
+
 
     })
 
