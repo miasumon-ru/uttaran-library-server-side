@@ -2,7 +2,7 @@
 const express = require("express")
 const app = express()
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const cors = require("cors")
 
@@ -41,6 +41,19 @@ async function run() {
         const result = await booksCollection.find().toArray()
         
         res.send(result)
+    })
+
+    app.get('/books/:id', async(req, res) => {
+
+      const id = req.params.id
+      console.log( "id for update",  id)
+
+      const query = { _id : new ObjectId(id) };
+
+      const result = await booksCollection.findOne(query)
+      
+      res.send(result)
+
     })
 
 
