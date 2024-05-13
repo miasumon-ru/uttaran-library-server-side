@@ -69,6 +69,18 @@ async function run() {
 
     })
 
+    app.get('/specificCategories/:category', async(req, res) => {
+      const category =  req.params.category
+
+      console.log(category)
+
+      const query = { category : category };
+
+      const result = await booksCollection.find(query).toArray();
+
+      res.send(result)
+    })
+
 
     app.put('/booksUpdate', async(req, res)=> {
       const book = req.body
@@ -93,6 +105,9 @@ async function run() {
 
 
     })
+
+
+    
 
 
     // Send a ping to confirm a successful connection
