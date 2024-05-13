@@ -35,6 +35,7 @@ async function run() {
     await client.connect();
 
     const booksCollection = client.db("booksDB").collection("books")
+    const borrowedBooksCollection = client.db("booksDB").collection("borrowedBooks")
 
 
 
@@ -59,8 +60,7 @@ async function run() {
     app.get('/books/:id', async(req, res) => {
 
       const id = req.params.id
-      console.log( "id for update",  id)
-
+  
       const query = { _id : new ObjectId(id) };
 
       const result = await booksCollection.findOne(query)
@@ -91,11 +91,12 @@ async function run() {
 
       const updateDoc = {
         $set: {
-          imageURL : book.imageURL,
+          image : book.imageURL,
           bookName : book.bookName,
           authorName : book.authorName,
           category : book.category,
           ratings : book.ratings
+        
         },
       };
 
@@ -103,6 +104,18 @@ async function run() {
 
       res.send(result)
 
+
+    })
+
+    // borrow book related api
+
+    app.post('/borrowedBooks', async(req, res)=> {
+
+      const borrowedBook = req.body
+
+      const result = await borrowedBooksCollection.insertOne(borrowedBook);
+
+      res.send(result)
 
     })
 
