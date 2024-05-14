@@ -51,7 +51,7 @@ const cookieOption = {
 
 const logger = (req, res, next) => {
 
-  console.log("log info", req.method, req.url)
+  // console.log("log info", req.method, req.url)
 
   next()
 }
@@ -94,17 +94,12 @@ async function run() {
     app.post('/jwt', async (req, res) => {
 
       const user = req.body
-
-      console.log("user for jwt", user)
+    
 
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
 
       res.cookie("token", token, cookieOption)
         .send({ succees: true })
-
-
-
-
 
     })
 
@@ -115,16 +110,14 @@ async function run() {
       const user = req.body
       res.clearCookie('token', { ...cookieOption, maxAge: 0 })
         .send({ succees: true })
+
     })
-
-
 
 
     // book related api
 
     app.get("/books", logger, verifyToken, async (req, res) => {
 
-      console.log("token owner info", req.user.email, req.query.email)
 
       if(req.user.email !== req.query.email){
         return res.status(403).send({message : 'forbidden access'})
@@ -135,14 +128,45 @@ async function run() {
       res.send(result)
     })
 
-    app.post("/books", async (req, res) => {
+
+
+    app.post("/books", verifyToken, async (req, res) => {
       const book = req.body
 
-      console.log(book)
+      console.log("addbook", req.user.email, req.query.email)
+
+      if(req.user.email !== req.query.email){
+        return res.status(403).send({message : 'forbidden access'})
+      }
+
       const result = await booksCollection.insertOne(book);
       res.send(result)
 
     })
+
+    // get filtered  data 
+
+    app.get("/filteredData", verifyToken, async (req, res) => {
+      const book = req.body
+
+      // console.log("addbook", req.user.email, req.query.email)
+
+      if(req.user.email !== req.query.email){
+        return res.status(403).send({message : 'forbidden access'})
+      }
+
+      const filter = {
+        quantity : {
+          $gt : 0
+        }
+      }
+
+      const result = await booksCollection.find(filter).toArray();
+      res.send(result)
+
+    })
+
+
 
     app.get('/books/:id', async (req, res) => {
 
@@ -159,8 +183,6 @@ async function run() {
     app.get('/specificCategories/:category', async (req, res) => {
       const category = req.params.category
 
-      console.log(category)
-
       const query = { category: category };
 
       const result = await booksCollection.find(query).toArray();
@@ -172,7 +194,6 @@ async function run() {
     app.put('/booksUpdate', async (req, res) => {
       const book = req.body
 
-      console.log(book)
 
       const filter = { _id: new ObjectId(book.id) };
 
@@ -212,8 +233,6 @@ async function run() {
 
       const email = req.query.email
 
-      console.log(req.url)
-
 
       const query = { email: email };
 
@@ -227,7 +246,6 @@ async function run() {
 
       const id = req.params.id
       const quantity = req.body
-      console.log("patch for ", id, quantity)
 
       const query = { _id: new ObjectId(id) }
 
@@ -250,11 +268,9 @@ async function run() {
 
       const bookName = req.params.bookName
       // const quantity = req.body
-      console.log("patch for ", bookName)
 
       const filter = { bookName: bookName }
 
-      console.log("query for ", filter)
 
       const options = { upsert: true };
 
@@ -266,7 +282,7 @@ async function run() {
 
       const result = await booksCollection.updateOne(filter, updateDoc, options)
 
-      console.log(result)
+  
 
       res.send(result)
 
@@ -277,11 +293,9 @@ async function run() {
 
     app.delete("/books/:id", async (req, res) => {
       const id = req.params.id
-      console.log("id for delete ", id)
 
       const message = req.body
 
-      console.log(message)
 
       const query = { _id: new ObjectId(id) };
 
@@ -290,7 +304,6 @@ async function run() {
 
       res.send(result)
     })
-
 
 
 
