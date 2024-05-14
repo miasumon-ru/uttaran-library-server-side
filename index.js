@@ -7,21 +7,24 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require("cors")
 
 const jwt = require('jsonwebtoken');
+var cookieParser = require('cookie-parser')
 
 const port = process.env.PORT || 5000
 
+
 // middleware
 
-
 app.use(cors({
-  origin : [
+  origin: [
     "http://localhost:5173"
   ],
-  credentials : true
+  credentials: true
 }))
 app.use(express.json())
 
-console.log(process.env.DB_USER)
+app.use(cookieParser())
+
+
 
 
 
@@ -39,9 +42,41 @@ const client = new MongoClient(uri, {
 // cookieOption
 
 const cookieOption = {
-  httpOnly : true,
-  sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
-  secure : process.env.NODE_ENV === "production" ? true : false
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  secure: process.env.NODE_ENV === "production" ? true : false
+}
+
+// logger 
+
+const logger = (req, res, next) => {
+
+  console.log("log info", req.method, req.url)
+
+  next()
+}
+
+// verify Token
+
+const verifyToken = (req, res, next) => {
+
+  const token = req.cookies.token
+
+  if (!token) {
+    return res.status(401).send({ message: "not authorized" })
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if(err){
+      return res.status(401).send({message: "not authorized"})
+    }
+
+    req.user = decoded
+    next()
+ })
+
+
+
 }
 
 
@@ -56,48 +91,64 @@ async function run() {
 
     // auth related api
 
-    app.post('/jwt', async(req, res)=> {
+    app.post('/jwt', async (req, res) => {
 
       const user = req.body
 
       console.log("user for jwt", user)
 
-      const token = jwt.sign(user,  process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
-      
-      res.cookie("token", token, cookieOption )
-         .send({succees : true})
-      
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+
+      res.cookie("token", token, cookieOption)
+        .send({ succees: true })
+
 
 
 
 
     })
+
+    // remove json webtoken api
+
+    app.post("/logout", async (req, res) => {
+
+      const user = req.body
+      res.clearCookie('token', { ...cookieOption, maxAge: 0 })
+        .send({ succees: true })
+    })
+
 
 
 
     // book related api
 
-    app.get("/books", async(req, res)=> {
+    app.get("/books", logger, verifyToken, async (req, res) => {
 
-        const result = await booksCollection.find().toArray()
-        
-        res.send(result)
+      console.log("token owner info", req.user.email, req.query.email)
+
+      if(req.user.email !== req.query.email){
+        return res.status(403).send({message : 'forbidden access'})
+      }
+
+      const result = await booksCollection.find().toArray()
+
+      res.send(result)
     })
 
-    app.post("/books" , async(req, res)=> {
+    app.post("/books", async (req, res) => {
       const book = req.body
 
       console.log(book)
       const result = await booksCollection.insertOne(book);
       res.send(result)
-      
+
     })
 
-    app.get('/books/:id', async(req, res) => {
+    app.get('/books/:id', async (req, res) => {
 
       const id = req.params.id
-  
-      const query = { _id : new ObjectId(id) };
+
+      const query = { _id: new ObjectId(id) };
 
       const result = await booksCollection.findOne(query)
 
@@ -105,12 +156,12 @@ async function run() {
 
     })
 
-    app.get('/specificCategories/:category', async(req, res) => {
-      const category =  req.params.category
+    app.get('/specificCategories/:category', async (req, res) => {
+      const category = req.params.category
 
       console.log(category)
 
-      const query = { category : category };
+      const query = { category: category };
 
       const result = await booksCollection.find(query).toArray();
 
@@ -118,7 +169,7 @@ async function run() {
     })
 
 
-    app.put('/booksUpdate', async(req, res)=> {
+    app.put('/booksUpdate', async (req, res) => {
       const book = req.body
 
       console.log(book)
@@ -127,12 +178,12 @@ async function run() {
 
       const updateDoc = {
         $set: {
-          image : book.imageURL,
-          bookName : book.bookName,
-          authorName : book.authorName,
-          category : book.category,
-          ratings : book.ratings
-        
+          image: book.imageURL,
+          bookName: book.bookName,
+          authorName: book.authorName,
+          category: book.category,
+          ratings: book.ratings
+
         },
       };
 
@@ -145,7 +196,7 @@ async function run() {
 
     // borrow book related api
 
-    app.post('/borrowedBooks', async(req, res)=> {
+    app.post('/borrowedBooks', async (req, res) => {
 
       const borrowedBook = req.body
 
@@ -157,32 +208,32 @@ async function run() {
 
     // 
 
-    app.get('/borrowedBooks', async(req, res)=> {
+    app.get('/borrowedBooks', async (req, res) => {
 
       const email = req.query.email
 
       console.log(req.url)
 
 
-      const query = { email : email };
+      const query = { email: email };
 
-      const result =  await borrowedBooksCollection.find(query).toArray();
+      const result = await borrowedBooksCollection.find(query).toArray();
 
       res.send(result)
 
     })
 
-    app.patch('/borrowedBooks/:id', async(req, res)=> {
+    app.patch('/borrowedBooks/:id', async (req, res) => {
 
       const id = req.params.id
       const quantity = req.body
-      console.log( "patch for ", id, quantity)
+      console.log("patch for ", id, quantity)
 
-      const query = { _id : new ObjectId(id)}
-     
+      const query = { _id: new ObjectId(id) }
+
       const updateDoc = {
-        $inc  : {
-          quantity : -1
+        $inc: {
+          quantity: -1
         }
       }
 
@@ -195,25 +246,25 @@ async function run() {
 
     })
 
-    app.patch('/books/:bookName', async(req, res)=> {
+    app.patch('/books/:bookName', async (req, res) => {
 
       const bookName = req.params.bookName
       // const quantity = req.body
-      console.log( "patch for ", bookName)
+      console.log("patch for ", bookName)
 
-      const filter  = { bookName : bookName }
+      const filter = { bookName: bookName }
 
-      console.log("query for ", filter )
+      console.log("query for ", filter)
 
       const options = { upsert: true };
-     
+
       const updateDoc = {
-        $inc  : {
-          quantity : 1
+        $inc: {
+          quantity: 1
         }
       }
 
-      const result = await booksCollection.updateOne(filter , updateDoc , options)
+      const result = await booksCollection.updateOne(filter, updateDoc, options)
 
       console.log(result)
 
@@ -224,24 +275,24 @@ async function run() {
 
     })
 
-    app.delete("/books/:id", async(req, res) => {
+    app.delete("/books/:id", async (req, res) => {
       const id = req.params.id
-      console.log("id for delete " , id)
+      console.log("id for delete ", id)
 
       const message = req.body
 
       console.log(message)
 
-      const query = {_id : new ObjectId(id) };
+      const query = { _id: new ObjectId(id) };
 
       const result = await borrowedBooksCollection.deleteOne(query);
-      
+
 
       res.send(result)
     })
 
 
-    
+
 
 
     // Send a ping to confirm a successful connection
@@ -257,10 +308,10 @@ run().catch(console.dir);
 
 
 app.get("/", async (req, res) => {
-    res.send("Library server is running")
+  res.send("Library server is running")
 })
 
 app.listen(port, () => {
-    console.log(`library server is running on port ${port}`)
+  console.log(`library server is running on port ${port}`)
 })
 
