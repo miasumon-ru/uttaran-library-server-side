@@ -16,7 +16,9 @@ const port = process.env.PORT || 5000
 
 app.use(cors({
   origin: [
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "https://assignment-eleven-client-side.web.app",
+    "https://assignment-eleven-client-side.firebaseapp.com"
   ],
   credentials: true
 }))
@@ -83,10 +85,12 @@ const verifyToken = (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const booksCollection = client.db("booksDB").collection("books")
     const borrowedBooksCollection = client.db("booksDB").collection("borrowedBooks")
+    const slidesCollection = client.db("booksDB").collection("slides")
+    const categoriesCollection = client.db("booksDB").collection("categories")
 
 
     // auth related api
@@ -99,7 +103,7 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
 
       res.cookie("token", token, cookieOption)
-        .send({ succees: true })
+        .send({ success: true })
 
     })
 
@@ -109,9 +113,33 @@ async function run() {
 
       const user = req.body
       res.clearCookie('token', { ...cookieOption, maxAge: 0 })
-        .send({ succees: true })
+        .send({ success: true })
 
     })
+
+    // slides related api
+
+    app.get("/slides", async(req, res )=> {
+
+      const result = await slidesCollection.find().toArray();
+
+      res.send(result)
+
+
+    })
+
+    // categories related api
+
+    app.get("/categories",  async(req, res)=> {
+
+      const result = await categoriesCollection.find().toArray();
+
+      res.send(result)
+
+
+    })
+
+
 
 
     // book related api
@@ -309,7 +337,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
